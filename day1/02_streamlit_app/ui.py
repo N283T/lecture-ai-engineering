@@ -7,12 +7,142 @@ from llm import generate_response
 from data import create_sample_evaluation_data
 from metrics import get_metrics_descriptions
 
+def setup_dark_mode():
+    """ダークモードとライトモードの切り替え機能をセットアップ"""
+    # モード選択の初期化
+    if 'dark_mode' not in st.session_state:
+        st.session_state.dark_mode = False
+    
+    # ダークモード切り替えボタン
+    dark_mode = st.sidebar.checkbox("🌙 ダークモード", value=st.session_state.dark_mode)
+    
+    # 状態が変わったら記録
+    if dark_mode != st.session_state.dark_mode:
+        st.session_state.dark_mode = dark_mode
+        st.rerun()
+    
+    # モードに応じたCSSを適用
+    if st.session_state.dark_mode:
+        # ダークモード用CSS
+        st.markdown("""
+        <style>
+        :root {
+            --background-color: #121212;
+            --text-color: #f0f0f0;
+            --user-message-bg: #2a4055;
+            --user-message-border: #3a5a7a;
+            --bot-message-bg: #2d2d2d;
+            --bot-message-border: #444444;
+            --button-bg: #3a6b35;
+            --button-hover: #2a5a25;
+            --header-color: #4da6ff;
+            --subheader-color: #bb86fc;
+        }
+        
+        .stApp {
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        
+        .chat-message {
+            padding: 1.5rem; 
+            border-radius: 0.75rem; 
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-color);
+        }
+        
+        .user-message {
+            background-color: var(--user-message-bg);
+            border-left: 5px solid var(--user-message-border);
+        }
+        
+        .bot-message {
+            background-color: var(--bot-message-bg);
+            border-left: 5px solid var(--bot-message-border);
+        }
+        
+        .stButton>button {
+            background-color: var(--button-bg);
+            color: white;
+            font-weight: bold;
+            border-radius: 20px;
+            padding: 0.5rem 2rem;
+            border: none;
+        }
+        
+        .stButton>button:hover {
+            background-color: var(--button-hover);
+        }
+        
+        /* テキストエリアやインプットフィールドのスタイル */
+        textarea, .stTextInput>div>div>input {
+            background-color: #2d2d2d !important;
+            color: #f0f0f0 !important;
+            border: 1px solid #444 !important;
+        }
+        
+        /* ヘッダーのスタイル */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--header-color) !important;
+        }
+        
+        /* サイドバースタイル調整 */
+        .css-1d391kg, .css-12oz5g7 {
+            background-color: #1a1a1a;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    else:
+        # ライトモード用CSS（既存のスタイルを使用）
+        st.markdown("""
+        <style>
+        .chat-message {
+            padding: 1.5rem; 
+            border-radius: 0.75rem; 
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .user-message {
+            background-color: #e6f7ff;
+            border-left: 5px solid #2196F3;
+        }
+        .bot-message {
+            background-color: #f0f2f6;
+            border-left: 5px solid #9c27b0;
+        }
+        .message-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .stButton>button {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+            border-radius: 20px;
+            padding: 0.5rem 2rem;
+            border: none;
+        }
+        .stButton>button:hover {
+            background-color: #45a049;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
 # --- チャットページのUI ---
 def display_chat_page(pipe):
+    # ダークモード設定を適用
+    setup_dark_mode()
     """チャットページのUIを表示する"""
-    st.subheader("質問を入力してください")
-    user_question = st.text_area("質問", key="question_input", height=100, value=st.session_state.get("current_question", ""))
-    submit_button = st.button("質問を送信")
+    st.subheader("単語を入力してください")
+    user_question = st.text_area("単語", key="question_input", height=68, value=st.session_state.get("current_question", ""))
+    submit_button = st.button("単語を説明させる")
 
     # セッション状態の初期化（安全のため）
     if "current_question" not in st.session_state:
@@ -30,8 +160,11 @@ def display_chat_page(pipe):
         st.session_state.current_answer = "" # 回答をリセット
         st.session_state.feedback_given = False # フィードバック状態もリセット
 
+        # 出力文字数を制限するようにプロンプトに指示を追加
+        prompt = "単語:" + user_question.strip() + "\n\nを一文で説明してください。説明する文章以外は必要ありません。また、単語:が単語でない場合推測して説明するか、わからない場合は単語を入力してくださいと出力してください" 
+
         with st.spinner("モデルが回答を生成中..."):
-            answer, response_time = generate_response(pipe, user_question)
+            answer, response_time = generate_response(pipe, prompt)
             st.session_state.current_answer = answer
             st.session_state.response_time = response_time
             # ここでrerunすると回答とフィードバックが一度に表示される
@@ -41,6 +174,9 @@ def display_chat_page(pipe):
     if st.session_state.current_question and st.session_state.current_answer:
         st.subheader("回答:")
         st.markdown(st.session_state.current_answer) # Markdownで表示
+        # 回答文字数を表示
+        answer_length = len(st.session_state.current_answer)
+        st.caption(f"回答の文字数: {answer_length} 文字")
         st.info(f"応答時間: {st.session_state.response_time:.2f}秒")
 
         # フィードバックフォームを表示 (まだフィードバックされていない場合)

@@ -11,7 +11,11 @@ from config import MODEL_NAME
 from huggingface_hub import HfFolder
 
 # --- アプリケーション設定 ---
-st.set_page_config(page_title="Gemma Chatbot", layout="wide")
+st.set_page_config(
+    page_title="Gemma Chatbot", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 # --- 初期化処理 ---
 # NLTKデータのダウンロード（初回起動時など）
@@ -46,11 +50,14 @@ def load_model():
 pipe = llm.load_model()
 
 # --- Streamlit アプリケーション ---
-st.title("🤖 Gemma 2 Chatbot with Feedback")
-st.write("Gemmaモデルを使用したチャットボットです。回答に対してフィードバックを行えます。")
+st.title("🤖 単語説明 bot   with Feedback")
+st.write("rinna の Gemma 2 Baku を使用した知りたい単語を説明してくれるチャットボットです。回答に対してフィードバックを行えます。\n\n単語でなくても何らかの返信は行えます。")
 st.markdown("---")
 
 # --- サイドバー ---
+# ダークモードの初期化（ui.pyのsetup_dark_mode関数を使用）
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
 st.sidebar.title("ナビゲーション")
 # セッション状態を使用して選択ページを保持
 if 'page' not in st.session_state:
@@ -78,4 +85,4 @@ elif st.session_state.page == "サンプルデータ管理":
 
 # --- フッターなど（任意） ---
 st.sidebar.markdown("---")
-st.sidebar.info("開発者: [Your Name]")
+st.sidebar.info("開発者: [Kitakami]")
